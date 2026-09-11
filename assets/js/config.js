@@ -9,27 +9,32 @@ window.VIVA = {
   brand: "Viva Writers",
   tagline: "Reliable, affordable, trusted research support",
 
-  /* Two main lines, used everywhere on the site (Kenya, Uganda and South
-     Sudan clients all use them). International format, digits only.     */
+  /* Primary WhatsApp line: clients text 0739 201316. Used for Kenya,
+     Uganda and South Sudan. International format, digits only.          */
   whatsapp: {
-    ke: "254798434285",
-    ug: "254798434285",
-    ss: "254798434285"
+    ke: "254739201316",
+    ug: "254739201316",
+    ss: "254739201316"
   },
   phoneDisplay: {
-    ke: "+254 798 434285",
-    ug: "+254 798 434285",
-    ss: "+254 798 434285"
+    ke: "+254 739 201316",
+    ug: "+254 739 201316",
+    ss: "+254 739 201316"
   },
-  /* Second main line */
-  whatsapp2: "254739201316",
-  phoneDisplay2: "+254 739 201316",
+  /* Second line */
+  whatsapp2: "254798434285",
+  phoneDisplay2: "+254 798 434285",
 
-  email: "hello@vivawriters.co.ke",
+  /* All orders, files and contact-form messages are e-mailed here. */
+  email: "awerebildad@gmail.com",
 
-  /* Optional: paste a Formspree / Getform endpoint and the order and
-     contact forms will POST to it (files included). Leave empty to fall
-     back to WhatsApp / e-mail, which needs no setup.                     */
+  /* Where the website sends orders and uploaded files.
+     Deploy backend/google-apps-script/Code.gs as a web app from the
+     awerebildad@gmail.com Google account (see backend/SETUP.md) and paste
+     the web-app URL here. Every order then arrives in that inbox with
+     the files attached and saved to Google Drive.
+     A Formspree / Getform endpoint also works here.
+     Leave empty and the site falls back to WhatsApp / the mail app.    */
   formEndpoint: "",
 
   hours: "Mon – Sun · 7:00 am – 11:00 pm EAT",

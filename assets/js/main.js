@@ -266,12 +266,14 @@
 
       if (C.formEndpoint) {
         btn.disabled = true;
-        fetch(C.formEndpoint, {
-          method: "POST",
-          headers: { "Accept": "application/json", "Content-Type": "application/json" },
-          body: JSON.stringify(d)
-        }).then(function (r) {
+        var isScript = /script\.google\.com/.test(C.formEndpoint);
+        var req = isScript
+          ? fetch(C.formEndpoint, { method: "POST", body: JSON.stringify(Object.assign({ type: "contact", summary: message(d), page: location.href }, d)) })
+          : fetch(C.formEndpoint, { method: "POST", headers: { "Accept": "application/json", "Content-Type": "application/json" }, body: JSON.stringify(d) });
+        req.then(function (r) {
           if (!r.ok) throw new Error("Request failed");
+          return isScript ? r.json().then(function (j) { if (j && j.ok === false) throw new Error(j.error); }) : null;
+        }).then(function () {
           form.reset();
           show("ok", "Thank you! Your request has been received. We'll reply on WhatsApp or e-mail within " + (C.responseTime || "a few minutes").toLowerCase() + ".");
         }).catch(function () {

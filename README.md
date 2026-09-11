@@ -38,13 +38,14 @@ step: plain HTML, CSS and JavaScript.
 
 Everything business-specific is in one file. Update:
 
-- `whatsapp` / `phoneDisplay` – main line (+254 798 434285) used for all countries;
-  `whatsapp2` / `phoneDisplay2` – second main line (+254 739 201316). Both show
-  on every page.
+- `whatsapp` / `phoneDisplay` – primary WhatsApp line (+254 739 201316) used for all
+  countries; `whatsapp2` / `phoneDisplay2` – second line (+254 798 434285).
+- `email` – awerebildad@gmail.com; all orders and files are delivered here.
 - `phoneDisplay` – how the numbers appear on the page
 - `email`, `hours`, `responseTime`
-- `formEndpoint` – optional Formspree / Getform URL so the contact form posts to your
-  inbox. Left empty, the form falls back to WhatsApp or the visitor's e-mail app.
+- `formEndpoint` – the Google Apps Script web-app URL from `backend/SETUP.md`. This
+  is what makes uploaded files land in the inbox. Left empty, the site falls back to
+  WhatsApp or the visitor's e-mail app.
 - `kesToUgx`, `kesToUsd` – exchange rates used to show UGX and USD prices
 - `levels`, `rates` (per level, per chapter / page / flat / on quote), `urgency`
   (set every factor to 1.0 for flat pricing), `extras`, `depositPercent`,
@@ -54,6 +55,13 @@ Everything business-specific is in one file. Update:
 The pages, `sitemap.xml` and `robots.txt` use `https://vivawriters.co.ke/`; change it
 if the site moves. Swap the placeholder stats and
 testimonials on `index.html` / `about.html` for real ones.
+
+## Backend: files into the inbox
+
+`backend/google-apps-script/Code.gs` is a small Google Apps Script that receives
+orders from the site, saves the files to Google Drive, logs them in a Google Sheet
+and e-mails everything to `TO_EMAIL` with attachments. `backend/SETUP.md` walks
+through deploying it from the Gmail account in about ten minutes; no server needed.
 
 ## Running locally
 

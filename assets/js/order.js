@@ -259,34 +259,88 @@
     return country === "Uganda" ? "ug" : country === "South Sudan" ? "ss" : "ke";
   }
 
+  /* ---- delivering files to the office e-mail --------------------------- */
+  function isAppsScript() { return /script\.google\.com/.test(C.formEndpoint || ""); }
+  function readAsBase64(file) {
+    return new Promise(function (res, rej) {
+      var r = new FileReader();
+      r.onload = function () { res(String(r.result).split(",")[1] || ""); };
+      r.onerror = rej;
+      r.readAsDataURL(file);
+    });
+  }
+  /* Sends the order summary + every uploaded file to C.formEndpoint.
+     Resolves true when delivered, false when nothing is configured.       */
+  function deliver(d, text) {
+    if (!C.formEndpoint) return Promise.resolve(false);
+    var sendable = files.filter(function (e) { return e.status !== "too large"; });
+    if (isAppsScript()) {
+      status("ok", "Sending your order" + (sendable.length ? " and file" + (sendable.length > 1 ? "s" : "") : "") + " to our team…");
+      return Promise.all(sendable.map(function (e) {
+        return readAsBase64(e.file).then(function (b64) { return { name: e.file.name, type: e.file.type || "application/octet-stream", size: e.file.size, data: b64 }; });
+      })).then(function (encoded) {
+        var payload = Object.assign({}, d, { type: "order", reference: ref, quote: lastQuote.totalText, summary: text, files: encoded, page: location.href });
+        // Plain-text body keeps this a "simple" request, which Apps Script accepts cross-origin.
+        return fetch(C.formEndpoint, { method: "POST", body: JSON.stringify(payload) });
+      }).then(function (r) { return r.json().catch(function () { return { ok: r.ok }; }); })
+        .then(function (j) { if (!j || j.ok === false) throw new Error(j && j.error); return true; });
+    }
+    // Formspree / Getform style: multipart form with the files attached
+    var fd = new FormData();
+    Object.keys(d).forEach(function (k) { fd.append(k, d[k]); });
+    fd.append("reference", ref); fd.append("quote", lastQuote.totalText); fd.append("summary", text);
+    sendable.forEach(function (e) { fd.append("files", e.file, e.file.name); });
+    return fetch(C.formEndpoint, { method: "POST", headers: { "Accept": "application/json" }, body: fd })
+      .then(function (r) { if (!r.ok) throw new Error("Request failed"); return true; });
+  }
+  function openWhatsApp(link, note) {
+    var w = window.open(link, "_blank", "noopener");
+    var s = $("#q-status");
+    s.className = "form__status is-ok";
+    s.innerHTML = "";
+    s.appendChild(document.createTextNode(note + " "));
+    var a = document.createElement("a"); a.href = link; a.target = "_blank"; a.rel = "noopener"; a.textContent = "Open WhatsApp"; a.style.fontWeight = "700";
+    s.appendChild(a);
+    return w;
+  }
+
   $("#q-wa").addEventListener("click", function () {
     if (!validate()) return;
     var d = data(), text = summary(d);
     var link = "https://wa.me/" + C.whatsapp[lineFor(d.country)] + "?text=" + encodeURIComponent(text);
     var shareFiles = files.filter(function (e) { return e.status !== "too large"; }).map(function (e) { return e.file; });
+    var btn = this; btn.disabled = true;
     remember();
-    if (shareFiles.length && navigator.canShare && navigator.canShare({ files: shareFiles })) {
-      navigator.share({ title: "Order " + ref, text: text, files: shareFiles })
-        .then(function () { status("ok", "Order " + ref + " shared. If WhatsApp didn't get the files, send them in the chat and quote " + ref + "."); })
-        .catch(function () { window.open(link, "_blank", "noopener"); status("ok", "WhatsApp is opening with your order " + ref + ". Attach your files in the chat."); });
-    } else {
-      window.open(link, "_blank", "noopener");
-      status("ok", "WhatsApp is opening with your order " + ref + ". " + (files.length ? "Please attach your file" + (files.length > 1 ? "s" : "") + " in the chat." : ""));
-    }
+    // 1. Files and order go to the office e-mail first (when configured), so nothing is lost.
+    deliver(d, text).then(function (delivered) {
+      btn.disabled = false;
+      if (delivered) {
+        openWhatsApp(link, "Order " + ref + (shareFiles.length ? " and your files were sent to our team." : " was sent to our team.") + " Continue on WhatsApp to confirm:");
+        return;
+      }
+      // 2. No endpoint: hand the files over through the phone's share sheet, or ask the client to attach them.
+      if (shareFiles.length && navigator.canShare && navigator.canShare({ files: shareFiles })) {
+        navigator.share({ title: "Order " + ref, text: text, files: shareFiles })
+          .then(function () { status("ok", "Order " + ref + " shared. If WhatsApp didn't get the files, send them in the chat and quote " + ref + "."); })
+          .catch(function () { openWhatsApp(link, "Order " + ref + ": attach your files in the chat."); });
+      } else {
+        openWhatsApp(link, "Order " + ref + "." + (shareFiles.length ? " Please attach your file" + (shareFiles.length > 1 ? "s" : "") + " in the chat." : ""));
+      }
+    }).catch(function () {
+      btn.disabled = false;
+      openWhatsApp(link, "We couldn't upload your files automatically. Please attach them in the WhatsApp chat and quote " + ref + ".");
+    });
   });
 
   $("#q-email").addEventListener("click", function () {
     if (!validate()) return;
     var d = data(), text = summary(d);
+    var btn = this;
     remember();
     if (C.formEndpoint) {
-      var fd = new FormData();
-      Object.keys(d).forEach(function (k) { fd.append(k, d[k]); });
-      fd.append("reference", ref); fd.append("quote", lastQuote.totalText); fd.append("summary", text);
-      files.forEach(function (e) { if (e.status !== "too large") fd.append("files", e.file, e.file.name); });
-      var btn = $("#q-email"); btn.disabled = true;
-      fetch(C.formEndpoint, { method: "POST", headers: { "Accept": "application/json" }, body: fd })
-        .then(function (r) { if (!r.ok) throw new Error(); status("ok", "Order " + ref + " received with your files. We'll confirm on WhatsApp shortly."); })
+      btn.disabled = true;
+      deliver(d, text)
+        .then(function () { status("ok", "Order " + ref + " and your files were sent to " + C.email + ". We'll confirm on WhatsApp shortly."); })
         .catch(function () { status("err", "We couldn't send the order. Please use the WhatsApp button, or e-mail " + C.email + " quoting " + ref + "."); })
         .then(function () { btn.disabled = false; });
     } else {
