@@ -9,13 +9,35 @@
 
   function round(kes, cur) {
     if (cur === "UGX") return Math.round((kes * (C.kesToUgx || 28)) / 500) * 500;
+    if (cur === "USD") return Math.max(1, Math.round(kes * (C.kesToUsd || 1 / 129)));
     return Math.round(kes / 50) * 50;
   }
   function format(kes, cur) {
     return cur + " " + round(kes, cur).toLocaleString("en-KE");
   }
+  function currencyFor(country) {
+    return (C.countryCurrency && C.countryCurrency[country]) || C.defaultCurrency || "KES";
+  }
+  function levelsFor(serviceKey) {
+    var r = C.rates[serviceKey];
+    if (!r) return Object.keys(C.levels);
+    if (r.levels) return r.levels;
+    if (r.byLevel) return Object.keys(C.levels).filter(function (k) { return r.byLevel[k] != null; });
+    return [];
+  }
+  function unitPrice(rate, level) {
+    if (rate.byLevel) {
+      if (rate.byLevel[level] != null) return rate.byLevel[level];
+      var first = levelsFor_rate(rate)[0];
+      return rate.byLevel[first];
+    }
+    return rate.kes || 0;
+  }
+  function levelsFor_rate(rate) {
+    if (rate.levels) return rate.levels;
+    return Object.keys(C.levels).filter(function (k) { return rate.byLevel && rate.byLevel[k] != null; });
+  }
 
-  /* Pick the urgency tier from hours remaining until the deadline */
   function tierForHours(hours) {
     var keys = Object.keys(C.urgency || {});
     for (var i = 0; i < keys.length; i++) {
@@ -25,9 +47,6 @@
     var last = keys[keys.length - 1];
     return Object.assign({ key: last }, C.urgency[last]);
   }
-
-  /* Suggested delivery date: never later than the deadline, and for
-     standard jobs we promise a day early.                                  */
   function deliveryFor(deadline, tier) {
     var d = new Date(deadline.getTime());
     if (tier.key === "standard") d.setHours(d.getHours() - 24);
@@ -35,94 +54,77 @@
   }
 
   /*
-    opts = {
-      service:  key in C.rates          (required)
-      words:    number                  (for per-page services; pages derived)
-      pages:    number                  (alternative to words)
-      urgencyKey: key in C.urgency      (either this...)
-      deadline: Date                    (...or this)
-      quality:  key in C.quality        (default "standard")
-      subject:  key in C.subjects       (default "general")
-      slides:   number                  (optional extra)
-      currency: "KES" | "UGX"
-    }
+    opts = { service, level, chapters, words, pages, urgencyKey | deadline (Date),
+             extras: { plagreport: n, slides: n }, currency }
   */
   function compute(opts) {
     var rate = C.rates[opts.service];
     if (!rate) return null;
+    var cur = opts.currency || C.defaultCurrency || "KES";
     var wpp = C.wordsPerPage || 275;
-    var pages = opts.pages;
-    if (!pages && opts.words) pages = opts.words / wpp;
-    pages = Math.max(1, Math.ceil(pages || 1));
-    var words = opts.words || pages * wpp;
+    var allowed = levelsFor(opts.service);
+    var level = allowed.indexOf(opts.level) >= 0 ? opts.level : allowed[0];
+    var levelLabel = C.levels[level] || "";
 
     var tier;
     if (opts.deadline instanceof Date && !isNaN(opts.deadline)) {
-      var hours = (opts.deadline.getTime() - Date.now()) / 36e5;
-      tier = tierForHours(Math.max(0, hours));
+      tier = tierForHours(Math.max(0, (opts.deadline.getTime() - Date.now()) / 36e5));
     } else {
       tier = Object.assign({ key: opts.urgencyKey }, C.urgency[opts.urgencyKey] || C.urgency.standard);
     }
-    var quality = C.quality[opts.quality] || C.quality.standard;
-    var subject = C.subjects[opts.subject] || C.subjects.general;
 
-    var lines = [];
-    var base = rate.unit === "page" ? rate.kes * pages : rate.kes;
-    lines.push({
-      label: rate.label + (rate.unit === "page" ? " × " + pages + " page" + (pages > 1 ? "s" : "") : ""),
-      kes: base
-    });
+    var result = { rate: rate, level: level, levelLabel: levelLabel, tier: tier, currency: cur, lines: [], onQuote: rate.unit === "quote",
+                   deliveryBy: opts.deadline instanceof Date && !isNaN(opts.deadline) ? deliveryFor(opts.deadline, tier) : null };
+    if (result.onQuote) {
+      result.totalKes = 0; result.depositKes = 0; result.depositPct = 0;
+      result.totalText = "On quote"; result.depositText = "—";
+      return result;
+    }
+
+    var price = unitPrice(rate, level);
+    var qty = 1, qtyLabel = "";
+    if (rate.unit === "chapter") {
+      qty = Math.max(1, parseInt(opts.chapters, 10) || 1);
+      qtyLabel = " × " + qty + " chapter" + (qty > 1 ? "s" : "");
+      result.chapters = qty;
+    } else if (rate.unit === "page") {
+      var pages = opts.pages;
+      if (!pages && opts.words) pages = opts.words / wpp;
+      qty = Math.max(1, Math.ceil(pages || 1));
+      qtyLabel = " × " + qty + " page" + (qty > 1 ? "s" : "");
+      result.pages = qty; result.words = Math.round(opts.words || qty * wpp);
+    }
+    var base = price * qty;
+    result.lines.push({ label: rate.label + (rate.byLevel ? " (" + levelLabel + ")" : "") + qtyLabel, kes: base });
     var running = base;
-    if (subject.factor !== 1) {
-      var sAdd = running * (subject.factor - 1);
-      lines.push({ label: "Technical subject (+" + Math.round((subject.factor - 1) * 100) + "%)", kes: sAdd });
-      running += sAdd;
-    }
-    if (quality.factor !== 1) {
-      var qAdd = running * (quality.factor - 1);
-      lines.push({ label: "Premium quality (+" + Math.round((quality.factor - 1) * 100) + "%)", kes: qAdd });
-      running += qAdd;
-    }
     if (tier.factor !== 1) {
       var uAdd = running * (tier.factor - 1);
-      lines.push({ label: "Deadline " + tier.label + " (+" + Math.round((tier.factor - 1) * 100) + "%)", kes: uAdd });
+      result.lines.push({ label: "Deadline " + tier.label + " (+" + Math.round((tier.factor - 1) * 100) + "%)", kes: uAdd });
       running += uAdd;
     }
-    var slides = parseInt(opts.slides, 10) || 0;
-    if (slides > 0 && C.extras && C.extras.slides) {
-      var slAdd = C.extras.slides.kes * slides;
-      lines.push({ label: "Presentation slides × " + slides, kes: slAdd });
-      running += slAdd;
-    }
+    var ex = opts.extras || {};
+    Object.keys(ex).forEach(function (k) {
+      var n = parseInt(ex[k], 10) || 0, def = C.extras && C.extras[k];
+      if (n > 0 && def) { result.lines.push({ label: def.label + " × " + n, kes: def.kes * n }); running += def.kes * n; }
+    });
     var total = Math.max(C.minOrderKes || 0, running);
     var depositPct = total < (C.fullPaymentBelowKes || 0) ? 100 : (C.depositPercent || 50);
-    var cur = opts.currency || C.defaultCurrency || "KES";
-
-    return {
-      rate: rate, pages: pages, words: Math.round(words), tier: tier, quality: quality, subject: subject,
-      lines: lines, totalKes: total, depositKes: total * depositPct / 100, depositPct: depositPct,
-      currency: cur,
-      totalText: format(total, cur),
-      depositText: format(total * depositPct / 100, cur),
-      deliveryBy: opts.deadline instanceof Date && !isNaN(opts.deadline) ? deliveryFor(opts.deadline, tier) : null
-    };
+    result.totalKes = total; result.depositKes = total * depositPct / 100; result.depositPct = depositPct;
+    result.totalText = format(total, cur); result.depositText = format(total * depositPct / 100, cur);
+    return result;
   }
 
-  /* Count words in plain text */
   function countWords(text) {
     var m = (text || "").match(/[\p{L}\p{N}]+(?:['’\-.][\p{L}\p{N}]+)*/gu);
     return m ? m.length : 0;
   }
-
-  /* Generate a short order reference, e.g. VW-240911-K7Q2 */
   function reference() {
-    var d = new Date();
-    var pad = function (n) { return (n < 10 ? "0" : "") + n; };
-    var alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    var tail = "";
+    var d = new Date(), pad = function (n) { return (n < 10 ? "0" : "") + n; };
+    var alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", tail = "";
     for (var i = 0; i < 4; i++) tail += alphabet[Math.floor(Math.random() * alphabet.length)];
     return "VW-" + String(d.getFullYear()).slice(2) + pad(d.getMonth() + 1) + pad(d.getDate()) + "-" + tail;
   }
 
-  window.VivaQuote = { compute: compute, format: format, round: round, tierForHours: tierForHours, countWords: countWords, reference: reference };
+  window.VivaQuote = { compute: compute, format: format, round: round, currencyFor: currencyFor, levelsFor: levelsFor,
+                       unitPrice: unitPrice, tierForHours: tierForHours, countWords: countWords, reference: reference };
 })();

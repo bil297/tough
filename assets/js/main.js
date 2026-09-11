@@ -100,26 +100,43 @@
         var saved = null;
         try { saved = localStorage.getItem("viva-currency"); } catch (e) {}
         if (saved) return;
-        if (sel.value === "Uganda") { currency = "UGX"; renderPrices(); }
-        if (sel.value === "Kenya") { currency = "KES"; renderPrices(); }
+        currency = window.VivaQuote ? window.VivaQuote.currencyFor(sel.value) : currency;
+        renderPrices();
       });
     });
   }
+
+  /* ---- helpers shared by estimator and calculator --------------------- */
+  function fillServices(sel) {
+    Object.keys(C.rates).forEach(function (key) {
+      var o = document.createElement("option");
+      o.value = key; o.textContent = C.rates[key].label; sel.appendChild(o);
+    });
+  }
+  function fillLevels(sel, serviceKey) {
+    var allowed = window.VivaQuote.levelsFor(serviceKey), prev = sel.value;
+    sel.innerHTML = "";
+    allowed.forEach(function (k) {
+      var o = document.createElement("option"); o.value = k; o.textContent = C.levels[k]; sel.appendChild(o);
+    });
+    if (allowed.indexOf(prev) >= 0) sel.value = prev;
+    else if (allowed.indexOf("undergrad") >= 0) sel.value = "undergrad";
+    return allowed.length > 0;
+  }
+  function qtyLabelFor(unit) { return unit === "chapter" ? "Chapters" : "Pages (275 words)"; }
 
   /* ---- Pricing-page calculator ---------------------------------------- */
   function initCalculator() {
     var form = $("#calc-form");
     if (!form || !C.rates || !window.VivaQuote) return;
-    var service = $("#calc-service", form);
+    fillServices($("#calc-service", form));
+    fillLevels($("#calc-level", form), $("#calc-service", form).value);
     var urgency = $("#calc-urgency", form);
-    Object.keys(C.rates).forEach(function (key) {
-      var o = document.createElement("option");
-      o.value = key; o.textContent = C.rates[key].label; service.appendChild(o);
-    });
     Object.keys(C.urgency).reverse().forEach(function (key) {
       var o = document.createElement("option");
       o.value = key; o.textContent = C.urgency[key].label; urgency.appendChild(o);
     });
+    $("#calc-service", form).addEventListener("change", function () { fillLevels($("#calc-level", form), this.value); });
     form.addEventListener("input", calculate);
     form.addEventListener("change", calculate);
     calculate();
@@ -128,52 +145,58 @@
   function calculate() {
     var form = $("#calc-form");
     if (!form || !window.VivaQuote) return;
-    var key = $("#calc-service", form).value;
-    var pages = Math.max(1, parseInt($("#calc-pages", form).value, 10) || 1);
-    var q = window.VivaQuote.compute({ service: key, pages: pages, urgencyKey: $("#calc-urgency", form).value, currency: currency });
+    var key = $("#calc-service", form).value, rate = C.rates[key];
+    var lvl = $("#calc-level", form);
+    var qty = Math.max(1, parseInt($("#calc-qty", form).value, 10) || 1);
+    var q = window.VivaQuote.compute({ service: key, level: lvl.value, chapters: qty, pages: qty, urgencyKey: $("#calc-urgency", form).value, currency: currency });
     if (!q) return;
-    $("#calc-pages-wrap", form).classList.toggle("hide", q.rate.unit !== "page");
+    $("#calc-qty-wrap", form).classList.toggle("hide", rate.unit !== "page" && rate.unit !== "chapter");
+    $("#calc-level-wrap", form).classList.toggle("hide", window.VivaQuote.levelsFor(key).length === 0);
+    $("#calc-qty-label", form).textContent = qtyLabelFor(rate.unit);
     $("#calc-amount").textContent = q.totalText;
-    $("#calc-summary").textContent = q.rate.label +
-      (q.rate.unit === "page" ? " · " + q.pages + " page" + (q.pages > 1 ? "s" : "") + " (≈" + q.words.toLocaleString() + " words)" : "") +
-      " · " + q.tier.label;
-    var msg = "Hello Viva Writers! I'd like a quote.\nService: " + q.rate.label + "\n" +
-      (q.rate.unit === "page" ? "Length: " + q.pages + " page(s)\n" : "") +
-      "Deadline: " + q.tier.label + "\nEstimate shown on site: " + q.totalText;
+    $("#calc-summary").textContent = q.onQuote ? "Priced after we see your document and similarity report." :
+      rate.label + (q.levelLabel ? " · " + q.levelLabel : "") +
+      (rate.unit === "chapter" ? " · " + q.chapters + " chapter" + (q.chapters > 1 ? "s" : "") : "") +
+      (rate.unit === "page" ? " · " + q.pages + " page" + (q.pages > 1 ? "s" : "") : "") + " · " + q.tier.label;
+    var msg = "Hello Viva Writers! I'd like a quote.\nService: " + rate.label + (q.levelLabel ? "\nLevel: " + q.levelLabel : "") +
+      (rate.unit === "chapter" ? "\nChapters: " + q.chapters : "") + (rate.unit === "page" ? "\nPages: " + q.pages : "") +
+      "\nDeadline: " + q.tier.label + "\nEstimate shown on site: " + q.totalText;
     var link = $("#calc-wa");
-    if (link) link.href = waLink(currency === "UGX" ? "ug" : "ke", msg);
+    if (link) link.href = waLink(currency === "UGX" ? "ug" : currency === "USD" ? "ss" : "ke", msg);
     var go = $("#calc-go");
-    if (go) go.href = "order.html?service=" + encodeURIComponent(key) + "&pages=" + q.pages + "&country=" + (currency === "UGX" ? "Uganda" : "Kenya");
+    if (go) go.href = "order.html?service=" + encodeURIComponent(key) + "&level=" + encodeURIComponent(lvl.value) +
+      (rate.unit === "chapter" ? "&chapters=" + qty : "") + (rate.unit === "page" ? "&pages=" + qty : "") +
+      "&country=" + encodeURIComponent(currency === "UGX" ? "Uganda" : currency === "USD" ? "South Sudan" : "Kenya");
   }
 
   /* ---- Home-page estimator ------------------------------------------- */
   function initEstimator() {
     var form = $("#estimator");
     if (!form || !window.VivaQuote) return;
-    var service = $("#e-service", form);
-    Object.keys(C.rates).forEach(function (key) {
-      var o = document.createElement("option");
-      o.value = key; o.textContent = C.rates[key].label; service.appendChild(o);
-    });
-    var dl = $("#e-deadline", form);
-    var d = new Date(); d.setDate(d.getDate() + 5);
+    var service = $("#e-service", form), lvl = $("#e-level", form), ctry = $("#e-country", form), dl = $("#e-deadline", form);
+    fillServices(service);
+    fillLevels(lvl, service.value);
+    var d = new Date(); d.setDate(d.getDate() + 7);
     var p = function (n) { return (n < 10 ? "0" : "") + n; };
     dl.value = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
     dl.min = new Date().toISOString().slice(0, 10);
-    var ctry = $("#e-country", form);
-    ctry.value = currency === "UGX" ? "Uganda" : "Kenya";
+    ctry.value = currency === "UGX" ? "Uganda" : currency === "USD" ? "South Sudan" : "Kenya";
     function run() {
-      var pages = Math.max(1, parseInt($("#e-pages", form).value, 10) || 1);
-      var cur = ctry.value === "Uganda" ? "UGX" : "KES";
+      var rate = C.rates[service.value];
+      var qty = Math.max(1, parseInt($("#e-qty", form).value, 10) || 1);
       var deadline = dl.value ? new Date(dl.value + "T17:00") : null;
-      var q = window.VivaQuote.compute({ service: service.value, pages: pages, deadline: deadline, currency: cur });
+      var q = window.VivaQuote.compute({ service: service.value, level: lvl.value, chapters: qty, pages: qty, deadline: deadline, currency: window.VivaQuote.currencyFor(ctry.value) });
       if (!q) return;
-      $("#e-pages-wrap", form).classList.toggle("hide", q.rate.unit !== "page");
+      $("#e-qty-wrap", form).classList.toggle("hide", rate.unit !== "page" && rate.unit !== "chapter");
+      $("#e-level-wrap", form).classList.toggle("hide", window.VivaQuote.levelsFor(service.value).length === 0);
+      $("#e-qty-label", form).textContent = qtyLabelFor(rate.unit);
       $("#e-total").textContent = q.totalText;
-      $("#e-note").textContent = q.tier.label + " · deposit " + q.depositText;
-      $("#e-go").href = "order.html?service=" + encodeURIComponent(service.value) + "&pages=" + q.pages +
+      $("#e-note").textContent = q.onQuote ? "priced after we see the document" : q.tier.label + " · deposit " + q.depositText;
+      $("#e-go").href = "order.html?service=" + encodeURIComponent(service.value) + "&level=" + encodeURIComponent(lvl.value) +
+        (rate.unit === "chapter" ? "&chapters=" + qty : "") + (rate.unit === "page" ? "&pages=" + qty : "") +
         "&country=" + encodeURIComponent(ctry.value) + (dl.value ? "&deadline=" + dl.value + "T17:00" : "");
     }
+    service.addEventListener("change", function () { fillLevels(lvl, service.value); run(); });
     form.addEventListener("input", run);
     form.addEventListener("change", run);
     run();
@@ -199,6 +222,7 @@
         "Phone / WhatsApp: " + d.phone + "\n" +
         "Country: " + d.country + "\n" +
         "Service: " + d.service + "\n" +
+        "Level: " + (d.level || "not specified") + "\n" +
         "Deadline: " + d.deadline + "\n" +
         "Length: " + (d.length || "not specified") + "\n" +
         "Details: " + d.details;
@@ -216,7 +240,7 @@
         e.preventDefault();
         if (!form.reportValidity()) return;
         var d = collect();
-        var country = d.country === "Uganda" ? "ug" : "ke";
+        var country = d.country === "Uganda" ? "ug" : d.country === "South Sudan" ? "ss" : "ke";
         window.open(waLink(country, message(d)), "_blank", "noopener");
         show("ok", "WhatsApp is opening with your request. If nothing happened, tap the green WhatsApp button at the bottom of the page.");
       });
