@@ -460,3 +460,6 @@ textarea { min-height: 130px; resize: vertical; }
 @media (min-width: 760px) { .stats--5 { grid-template-columns: repeat(5, 1fr); } }
 .stats--5 .stat strong { font-size: 1.7rem; }
 .choice__item input[type=checkbox] { width: auto; }
+.recommend { display: grid; gap: 16px; align-items: center; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; }
+.recommend h3 { margin-bottom: 4px; }
+@media (min-width: 760px) { .recommend { grid-template-columns: 1fr auto; } }

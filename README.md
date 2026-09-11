@@ -38,8 +38,9 @@ step: plain HTML, CSS and JavaScript.
 
 Everything business-specific is in one file. Update:
 
-- `whatsapp.ke` / `.ug` / `.ss` – WhatsApp numbers (digits only). Uganda and South
-  Sudan currently point to the Kenya number; replace when you have local lines.
+- `whatsapp` / `phoneDisplay` – main line (+254 798 434285) used for all countries;
+  `whatsapp2` / `phoneDisplay2` – second main line (+254 739 201316). Both show
+  on every page.
 - `phoneDisplay` – how the numbers appear on the page
 - `email`, `hours`, `responseTime`
 - `formEndpoint` – optional Formspree / Getform URL so the contact form posts to your

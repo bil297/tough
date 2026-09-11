@@ -34,6 +34,17 @@
       el.textContent = display;
       if (el.tagName === "A") el.href = "tel:+" + C.whatsapp[country];
     });
+    $$("[data-phone2]").forEach(function (el) {
+      if (!C.phoneDisplay2) return;
+      el.textContent = C.phoneDisplay2;
+      if (el.tagName === "A") el.href = "tel:+" + C.whatsapp2;
+    });
+    $$("[data-wa2]").forEach(function (a) {
+      if (!C.whatsapp2) return;
+      var text = a.getAttribute("data-wa-text") || ("Hello " + (C.brand || "Viva Writers") + ", I'd like a quote for a writing project.");
+      a.href = "https://wa.me/" + C.whatsapp2 + "?text=" + encodeURIComponent(text);
+      a.target = "_blank"; a.rel = "noopener";
+    });
     $$("[data-email]").forEach(function (el) {
       el.textContent = C.email;
       if (el.tagName === "A") el.href = "mailto:" + C.email;

@@ -9,20 +9,21 @@ window.VIVA = {
   brand: "Viva Writers",
   tagline: "Reliable, affordable, trusted research support",
 
-  /* WhatsApp numbers in international format WITHOUT "+" or spaces.
-     Kenya 254…, Uganda 256…, South Sudan 211…
-     Uganda and South Sudan currently point to the Kenya line; replace
-     them when you have local numbers.                                    */
+  /* Two main lines, used everywhere on the site (Kenya, Uganda and South
+     Sudan clients all use them). International format, digits only.     */
   whatsapp: {
-    ke: "254739201316",
-    ug: "254739201316",
-    ss: "254739201316"
+    ke: "254798434285",
+    ug: "254798434285",
+    ss: "254798434285"
   },
   phoneDisplay: {
-    ke: "+254 739 201316",
-    ug: "+254 739 201316",
-    ss: "+254 739 201316"
+    ke: "+254 798 434285",
+    ug: "+254 798 434285",
+    ss: "+254 798 434285"
   },
+  /* Second main line */
+  whatsapp2: "254739201316",
+  phoneDisplay2: "+254 739 201316",
 
   email: "hello@vivawriters.co.ke",
 
@@ -69,11 +70,12 @@ window.VIVA = {
       label: "Concept note", unit: "flat",
       byLevel: { phd: 15000, masters: 10000 }, levels: ["phd", "masters"]
     },
-    spss:       { label: "Data analysis – SPSS (quantitative)", unit: "flat", kes: 10000 },
-    nvivo:      { label: "Data analysis – NVivo (qualitative)", unit: "flat", kes: 10000 },
-    rjava:      { label: "Data analysis – R, Python or Java", unit: "flat", kes: 30000 },
-    manuscript: { label: "Journal manuscript preparation (open-access)", unit: "flat", kes: 30000 },
-    publication:{ label: "Publication support (paid journal, fees excluded)", unit: "flat", kes: 15000 },
+    spss:       { label: "Quantitative analysis – SPSS", unit: "flat", kes: 20000 },
+    rstata:     { label: "Advanced quantitative – R or Stata", unit: "flat", kes: 35000 },
+    nvivo:      { label: "Qualitative analysis – NVivo", unit: "flat", kes: 30000 },
+    journalfast:{ label: "Journal publication – fast-track journal", unit: "flat", kes: 15000 },
+    journaluni: { label: "Journal publication – university journal", unit: "flat", kes: 30000 },
+    journaloa:  { label: "Journal publication – open-access international journal", unit: "flat", kes: 100000 },
     plagcheck:  { label: "Plagiarism & AI check with report", unit: "flat", kes: 500 },
     plagreduce: { label: "Plagiarism & AI similarity reduction", unit: "quote" }
   },
