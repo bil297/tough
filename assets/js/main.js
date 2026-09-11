@@ -61,6 +61,7 @@
 
   function fmt(kes, cur) {
     cur = cur || currency;
+    if (window.VivaQuote) return window.VivaQuote.format(kes, cur);
     var value = kes;
     if (cur === "UGX") {
       value = Math.round((kes * (C.kesToUgx || 28)) / 500) * 500;
@@ -105,17 +106,17 @@
     });
   }
 
-  /* ---- Quote calculator ------------------------------------------------ */
+  /* ---- Pricing-page calculator ---------------------------------------- */
   function initCalculator() {
     var form = $("#calc-form");
-    if (!form || !C.rates) return;
+    if (!form || !C.rates || !window.VivaQuote) return;
     var service = $("#calc-service", form);
     var urgency = $("#calc-urgency", form);
     Object.keys(C.rates).forEach(function (key) {
       var o = document.createElement("option");
       o.value = key; o.textContent = C.rates[key].label; service.appendChild(o);
     });
-    Object.keys(C.urgency).forEach(function (key) {
+    Object.keys(C.urgency).reverse().forEach(function (key) {
       var o = document.createElement("option");
       o.value = key; o.textContent = C.urgency[key].label; urgency.appendChild(o);
     });
@@ -126,28 +127,56 @@
 
   function calculate() {
     var form = $("#calc-form");
-    if (!form || !C.rates) return;
+    if (!form || !window.VivaQuote) return;
     var key = $("#calc-service", form).value;
-    var rate = C.rates[key];
-    if (!rate) return;
-    var pagesWrap = $("#calc-pages-wrap", form);
     var pages = Math.max(1, parseInt($("#calc-pages", form).value, 10) || 1);
-    var urg = C.urgency[$("#calc-urgency", form).value] || { factor: 1 };
-    var base = rate.unit === "page" ? rate.kes * pages : rate.kes;
-    var total = base * urg.factor;
-    pagesWrap.classList.toggle("hide", rate.unit !== "page");
-
-    $("#calc-amount").textContent = fmt(total);
-    $("#calc-summary").textContent =
-      rate.label + (rate.unit === "page" ? " · " + pages + " page" + (pages > 1 ? "s" : "") + " (≈" + (pages * 275).toLocaleString() + " words)" : "") +
-      " · " + urg.label;
-    var msg = "Hello Viva Writers! I'd like a quote.\n" +
-      "Service: " + rate.label + "\n" +
-      (rate.unit === "page" ? "Length: " + pages + " page(s)\n" : "") +
-      "Deadline: " + urg.label + "\n" +
-      "Estimate shown on site: " + fmt(total);
+    var q = window.VivaQuote.compute({ service: key, pages: pages, urgencyKey: $("#calc-urgency", form).value, currency: currency });
+    if (!q) return;
+    $("#calc-pages-wrap", form).classList.toggle("hide", q.rate.unit !== "page");
+    $("#calc-amount").textContent = q.totalText;
+    $("#calc-summary").textContent = q.rate.label +
+      (q.rate.unit === "page" ? " · " + q.pages + " page" + (q.pages > 1 ? "s" : "") + " (≈" + q.words.toLocaleString() + " words)" : "") +
+      " · " + q.tier.label;
+    var msg = "Hello Viva Writers! I'd like a quote.\nService: " + q.rate.label + "\n" +
+      (q.rate.unit === "page" ? "Length: " + q.pages + " page(s)\n" : "") +
+      "Deadline: " + q.tier.label + "\nEstimate shown on site: " + q.totalText;
     var link = $("#calc-wa");
     if (link) link.href = waLink(currency === "UGX" ? "ug" : "ke", msg);
+    var go = $("#calc-go");
+    if (go) go.href = "order.html?service=" + encodeURIComponent(key) + "&pages=" + q.pages + "&country=" + (currency === "UGX" ? "Uganda" : "Kenya");
+  }
+
+  /* ---- Home-page estimator ------------------------------------------- */
+  function initEstimator() {
+    var form = $("#estimator");
+    if (!form || !window.VivaQuote) return;
+    var service = $("#e-service", form);
+    Object.keys(C.rates).forEach(function (key) {
+      var o = document.createElement("option");
+      o.value = key; o.textContent = C.rates[key].label; service.appendChild(o);
+    });
+    var dl = $("#e-deadline", form);
+    var d = new Date(); d.setDate(d.getDate() + 5);
+    var p = function (n) { return (n < 10 ? "0" : "") + n; };
+    dl.value = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+    dl.min = new Date().toISOString().slice(0, 10);
+    var ctry = $("#e-country", form);
+    ctry.value = currency === "UGX" ? "Uganda" : "Kenya";
+    function run() {
+      var pages = Math.max(1, parseInt($("#e-pages", form).value, 10) || 1);
+      var cur = ctry.value === "Uganda" ? "UGX" : "KES";
+      var deadline = dl.value ? new Date(dl.value + "T17:00") : null;
+      var q = window.VivaQuote.compute({ service: service.value, pages: pages, deadline: deadline, currency: cur });
+      if (!q) return;
+      $("#e-pages-wrap", form).classList.toggle("hide", q.rate.unit !== "page");
+      $("#e-total").textContent = q.totalText;
+      $("#e-note").textContent = q.tier.label + " · deposit " + q.depositText;
+      $("#e-go").href = "order.html?service=" + encodeURIComponent(service.value) + "&pages=" + q.pages +
+        "&country=" + encodeURIComponent(ctry.value) + (dl.value ? "&deadline=" + dl.value + "T17:00" : "");
+    }
+    form.addEventListener("input", run);
+    form.addEventListener("change", run);
+    run();
   }
 
   /* ---- Contact / order form ------------------------------------------- */
@@ -235,6 +264,7 @@
     fillContactDetails();
     initNav();
     initCalculator();
+    initEstimator();
     initCurrency();
     renderPrices();
     initForm();

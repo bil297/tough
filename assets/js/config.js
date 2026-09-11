@@ -51,11 +51,38 @@ window.VIVA = {
     speech:         { label: "Speech or presentation script",  unit: "flat", kes: 3500 }
   },
 
-  /* Turnaround multipliers applied to the base price */
+  /* Turnaround tiers. The order system works out the tier from the
+     client's deadline: the first tier whose maxHours is >= hours left.  */
   urgency: {
-    standard: { label: "7+ days",     factor: 1.0 },
-    fast:     { label: "3 – 6 days",  factor: 1.2 },
-    rush:     { label: "24 – 48 hrs", factor: 1.5 },
-    urgent:   { label: "Under 24 hrs", factor: 2.0 }
-  }
+    urgent:   { label: "Under 24 hours", maxHours: 24,       factor: 2.0 },
+    rush:     { label: "1 – 3 days",     maxHours: 72,       factor: 1.5 },
+    fast:     { label: "3 – 7 days",     maxHours: 168,      factor: 1.2 },
+    standard: { label: "7+ days",        maxHours: Infinity, factor: 1.0 }
+  },
+
+  /* Quality level chosen by the client */
+  quality: {
+    standard: { label: "Standard – vetted writer + proofread",            factor: 1.0 },
+    premium:  { label: "Premium – senior writer + full editor review",    factor: 1.35 }
+  },
+
+  /* Subject complexity */
+  subjects: {
+    general:   { label: "General, business or social sciences",              factor: 1.0 },
+    technical: { label: "Technical: law, medicine, engineering, IT, finance", factor: 1.2 }
+  },
+
+  /* Optional extras */
+  extras: {
+    slides: { label: "Presentation slides", unit: "slide", kes: 300 }
+  },
+
+  wordsPerPage: 275,
+  minOrderKes: 500,
+  depositPercent: 50,
+  fullPaymentBelowKes: 3000,
+
+  /* Maximum upload size per file, in MB (files are sent to you on
+     WhatsApp or through the form endpoint, never stored on the site).  */
+  maxFileMb: 25
 };
