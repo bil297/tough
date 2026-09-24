@@ -15,6 +15,7 @@ step: plain HTML, CSS and JavaScript.
 | `pricing.html` | Full rate card by academic level in KES / UGX / USD, quick calculator, payment methods |
 | `about.html` | Story, team, promises, coverage of Kenya, Uganda and South Sudan |
 | `contact.html` | Order form that sends via WhatsApp or e-mail, contact lines |
+| `publications.html` | Peer-reviewed papers (Google Scholar) and e-books/study guides (Selar) |
 | `404.html` | Not-found page |
 
 ## How the instant quote works
@@ -33,6 +34,27 @@ step: plain HTML, CSS and JavaScript.
 4. "Send order on WhatsApp" opens the Kenya, Uganda or South Sudan line with the
    full summary; on Android the files go along through the share sheet. "Send by
    e-mail" posts everything to `formEndpoint` if set, otherwise opens their mail app.
+
+## Publications & e-books: edit `assets/js/publications.js`
+
+`publications.html` lists peer-reviewed papers and e-books, rendered by
+`assets/js/pubs-render.js`. Everything lives in `assets/js/publications.js`:
+
+- `scholarUrl` / `selarUrl` – your Google Scholar profile and Selar store links.
+  Every `[data-scholar]` / `[data-selar]` link on the site (header, footer, home
+  teaser, publications page) points here automatically.
+- `papers` – one object per paper: `title`, `authors`, `journal`, `volume`, `year`,
+  optional `cited` (citation count) and `topics` (tag chips). Add a new paper by
+  copying an existing object. The page sorts by year then citations automatically,
+  shows a running paper/citation count, and each title links to a Google Scholar
+  search for that exact title (Scholar has no public API for a direct per-paper
+  link, so this is the reliable way to land on the right result).
+- `ebooks` – one object per Selar product: `title`, `blurb`, `url` (the direct
+  product link from your Selar dashboard — falls back to `selarUrl` if omitted),
+  optional `tag` and `price`. Replace the three placeholder titles with your real
+  ones and paste each book's own Selar URL so "Buy on Selar" opens the right product.
+- The home page shows the 3 most-cited papers and the first 3 e-books as a teaser
+  (`#pub-featured`, `#ebook-featured`); `publications.html` lists everything.
 
 ## Before going live: edit `assets/js/config.js`
 
