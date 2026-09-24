@@ -5,6 +5,24 @@ support and academic writing assistance for students in Kenya, Uganda and South
 Sudan. Built to convert clients only; no writer-recruitment content. No build
 step: plain HTML, CSS and JavaScript.
 
+## Brand
+
+Colours and logo come from the real Viva Writers mark (the tie-and-star badge).
+`--green-*` custom properties in `assets/css/style.css` hold the navy shades and
+`--gold-*` hold the sky-blue accent (names are historical — both are shades of
+blue now, kept so the many `var(--green-800)` etc. references across the CSS
+didn't need renaming). Edit the hex values in the `:root` block to re-theme the
+whole site at once.
+
+The logo icon lives at `assets/img/logo-icon.png` (full-res, transparent
+background) plus pre-sized `logo-icon-{32,64,180,512}.png`, used for the
+favicon, the header/footer mark (`<img class="logo__mark">`) and embedded
+(base64) in the Open Graph share image. To swap in an updated logo: replace
+`logo-icon.png` with a transparent-background PNG, re-export the same sizes,
+and re-render `assets/img/og-image.png` (a headless-browser screenshot of an
+HTML template with the logo and brand colours — any tool that can screenshot
+HTML to PNG at 1200×630 will do).
+
 ## Pages
 
 | File | Purpose |
