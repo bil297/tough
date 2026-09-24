@@ -1,31 +1,32 @@
 /* ==========================================================================
    Viva Writers – stylesheet
-   Mobile-first, lightweight, no framework. Colours: brand navy blue,
-   sky-blue accent (sampled from the Viva Writers logo), cream paper.
-   Fonts: Fraunces (display) + Inter (text).
+   Mobile-first, lightweight, no framework. Colours: deep forest green,
+   warm gold, cream paper (final choice — the logo mark keeps its own
+   navy/blue, independent of this site palette). Fonts: Fraunces
+   (display) + Inter (text).
    ========================================================================== */
 
 :root {
-  --green-900: #071335;
-  --green-800: #0b2177;
-  --green-700: #17399e;
-  --green-600: #2f6fe0;
-  --green-100: #e8edfb;
-  --gold-600: #0b6fb0;
-  --gold-500: #12a3e6;
-  --gold-100: #e3f4fd;
+  --green-900: #072a20;
+  --green-800: #0b3d2e;
+  --green-700: #135741;
+  --green-600: #1c7a5a;
+  --green-100: #e3f2ea;
+  --gold-600: #c9871f;
+  --gold-500: #e8a33d;
+  --gold-100: #fdf1dc;
   --cream: #fbf8f2;
   --paper: #ffffff;
-  --ink: #171c26;
-  --ink-soft: #4b5262;
-  --ink-mute: #7d8494;
-  --line: #e2e4ec;
+  --ink: #17201c;
+  --ink-soft: #4b5751;
+  --ink-mute: #7d877f;
+  --line: #e6e2d9;
   --wa: #25d366;
   --wa-dark: #128c7e;
   --radius: 16px;
   --radius-sm: 10px;
-  --shadow: 0 10px 30px rgba(7, 19, 53, .10);
-  --shadow-sm: 0 2px 10px rgba(7, 19, 53, .08);
+  --shadow: 0 10px 30px rgba(7, 42, 32, .10);
+  --shadow-sm: 0 2px 10px rgba(7, 42, 32, .08);
   --font-display: "Fraunces", Georgia, "Times New Roman", serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --max: 1160px;

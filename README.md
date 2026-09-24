@@ -7,12 +7,15 @@ step: plain HTML, CSS and JavaScript.
 
 ## Brand
 
-Colours and logo come from the real Viva Writers mark (the tie-and-star badge).
-`--green-*` custom properties in `assets/css/style.css` hold the navy shades and
-`--gold-*` hold the sky-blue accent (names are historical — both are shades of
-blue now, kept so the many `var(--green-800)` etc. references across the CSS
-didn't need renaming). Edit the hex values in the `:root` block to re-theme the
-whole site at once.
+Site colour scheme is forest green (`--green-*`) and warm gold (`--gold-*`),
+set as custom properties in the `:root` block of `assets/css/style.css` — edit
+the hex values there to re-theme the whole site at once. This is the final,
+settled choice; an all-navy/blue variant was tried and rejected in favour of
+this green palette.
+
+The logo mark (the tie-and-star badge) is the client's real logo and keeps its
+own navy-blue colouring regardless of the site palette above — it is a fixed
+image, not CSS, so it doesn't follow `--green-*`/`--gold-*`.
 
 The logo icon lives at `assets/img/logo-icon.png` (full-res, transparent
 background) plus pre-sized `logo-icon-{32,64,180,512}.png`, used for the
